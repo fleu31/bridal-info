@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    // /studio/intent/edit/... など、/studio 以下はぜんぶ /studio を返す
-    return [{ source: '/studio/:path*', destination: '/studio' }]
+    // /studio 以下は常に /studio に割り当て（深いリンク 404 回避）
+    return [{ source: '/studio/:path*', destination: '/studio' }];
   },
 };
-module.exports = nextConfig;
+export default nextConfig;
