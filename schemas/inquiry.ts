@@ -15,5 +15,9 @@ export default defineType({
     defineField({name:'ref', title:'リファラ', type:'string'}),
     defineField({name:'honey', title:'Honeypot', type:'boolean'}),
     defineField({name:'createdAt', title:'作成日時', type:'datetime', initialValue:()=>new Date().toISOString()}),
+    // --- Slack 連携メタ ---
+    defineField({name:'slackPosted', title:'Slack送信済み', type:'boolean'}),
+    defineField({name:'slackChannel', title:'Slackチャンネル', type:'string'}),
+    defineField({name:'slackTs', title:'Slack ts', type:'string'}),
   ]
 })
