@@ -6,9 +6,12 @@ const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export default function ContactForm(){
   const [state, setState] = useState<'idle'|'sending'|'ok'|'err'>('idle')
-  const [msg, setMsg] = useState<string>('') // エラー/案内の表示
+  const [msg, setMsg] = useState<string>('')       // エラー表示用
+  const [debug, setDebug] = useState<string>('')   // レスポンス可視化
   const [cfToken, setCfToken] = useState<string>('')
   const start = useRef<number>(Date.now())
+  const busyRef = useRef(false)     // 二重送信ガード
+  const doneRef = useRef(false)     // 一度成功したら以降は無視
 
   useEffect(()=>{
     if (!SITE_KEY) return
@@ -30,12 +33,15 @@ export default function ContactForm(){
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if (busyRef.current || doneRef.current) return
+    busyRef.current = true
     setMsg('')
+    setDebug('')
     setState('sending')
 
     const fd = new FormData(e.currentTarget)
     const v = validate(fd)
-    if (v) { setMsg(v); setState('err'); return }
+    if (v) { setMsg(v); setState('err'); busyRef.current = false; return }
 
     const payload = {
       name: String(fd.get('name')||'').trim(),
@@ -54,13 +60,17 @@ export default function ContactForm(){
     try {
       const r = await fetch('/api/contact', {
         method: 'POST',
-        headers: { 'Content-Type':'application/json' },
+        headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
         cache: 'no-store',
         body: JSON.stringify(payload)
       })
 
-      // ★ 本質：200 系なら問答無用で成功扱いにする（レスポンス本文は見ない）
+      const text = await r.text().catch(()=> '')
+      setDebug(`status=${r.status} ok=${r.ok} body=${text || '(empty)'}`)
+
+      // ★ 200系なら必ず成功扱いにする（本文は見ない）
       if (r.ok) {
+        doneRef.current = true
         setState('ok')
         e.currentTarget.reset()
         setCfToken('')
@@ -68,13 +78,13 @@ export default function ContactForm(){
         return
       }
 
-      // 200 以外だけメッセージ表示（本文がJSONでなくてもOK）
-      const text = await r.text().catch(()=> '')
       setMsg(text || `送信に失敗しました（${r.status}）`)
       setState('err')
     } catch {
       setMsg('通信エラーが発生しました。')
       setState('err')
+    } finally {
+      busyRef.current = false
     }
   }
 
@@ -82,20 +92,15 @@ export default function ContactForm(){
     return (
       <div className="card">
         <div className="font-medium">送信完了</div>
-        <p className="mt-2 text-sm text-neutral-700">
-          お問い合わせありがとうございます。内容を確認のうえ、担当よりご連絡いたします。
-        </p>
-        <div className="text-xs text-neutral-400 mt-2">form v4</div>
-        <button className="btn mt-3" onClick={()=>{ setState('idle'); setMsg(''); start.current = Date.now() }}>戻る</button>
+        <p className="mt-2 text-sm text-neutral-700">お問い合わせありがとうございます。内容を確認のうえ、担当よりご連絡いたします。</p>
+        <div className="text-xs text-neutral-400 mt-2">form v6</div>
       </div>
     )
   }
 
   return (
     <form className="space-y-4" onSubmit={onSubmit} noValidate>
-      {/* honeypot */}
       <input type="text" name="company" className="hidden" tabIndex={-1} autoComplete="off" />
-
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm">お名前 *</label>
@@ -145,13 +150,13 @@ export default function ContactForm(){
       )}
 
       {msg && <div className="text-sm text-red-600">{msg}</div>}
+      {debug && <div className="text-xs text-neutral-500 break-all">debug: {debug}</div>}
 
-      <button className="btn" disabled={state==='sending'}>
+      <button className="btn" disabled={state==='sending' || busyRef.current || doneRef.current}>
         {state==='sending' ? '送信中…' : '送信する'}
       </button>
 
-      {/* 現在のビルドが反映されたか確認用 */}
-      <div className="text-xs text-neutral-400 mt-2">form v4</div>
+      <div className="text-xs text-neutral-400 mt-2">form v6</div>
     </form>
   )
 }
