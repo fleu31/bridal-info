@@ -6,11 +6,12 @@ const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export default function ContactForm(){
   const [state, setState] = useState<'idle'|'sending'|'ok'>('idle')
-  const [debug, setDebug] = useState<string>('')   // レスポンス可視化
+  const [debug, setDebug] = useState<string>('')     // 必要なら見える簡易ログ
   const [cfToken, setCfToken] = useState<string>('')
   const start = useRef<number>(Date.now())
-  const busyRef = useRef(false)     // 二重送信ガード
-  const doneRef = useRef(false)     // 一度成功したら以降は無視
+  const busyRef = useRef(false)      // 二重送信ガード
+  const doneRef = useRef(false)      // 1回成功したら無視
+  const formRef = useRef<HTMLFormElement>(null) // 安全に reset
 
   useEffect(()=>{
     if (!SITE_KEY) return
@@ -48,8 +49,8 @@ export default function ContactForm(){
       category: String(fd.get('category')||'').trim(),
       message: String(fd.get('message')||'').trim(),
       consent: fd.get('consent') === 'on',
-      honey: String(fd.get('company')||'').trim(),
-      t: Date.now() - start.current,
+      honey: String(fd.get('company')||'').trim(),     // ハニーポット
+      t: Date.now() - start.current,                   // 経過ms
       cfToken,
       path: typeof window !== 'undefined' ? window.location.pathname : '',
       ref: typeof document !== 'undefined' ? document.referrer : ''
@@ -64,18 +65,15 @@ export default function ContactForm(){
       })
       const text = await r.text().catch(()=> '')
       setDebug(`status=${r.status} ok=${r.ok} body=${text || '(empty)'}`)
-
-      // ★ 200系なら無条件で成功（本文は見ない）
+      // ★ 200系なら無条件で成功扱い（保存/通知の失敗は裏で握りつぶす）
       if (r.ok) {
         doneRef.current = true
         setState('ok')
-        e.currentTarget.reset()
+        try { formRef.current?.reset() } catch {}
         setCfToken('')
         start.current = Date.now()
         return
       }
-
-      // 非200だけ待避（画面はそのまま）
       setState('idle')
     } catch (e:any) {
       setDebug(`fetch_error: ${e?.message || 'unknown'}`)
@@ -89,16 +87,14 @@ export default function ContactForm(){
     return (
       <div className="card">
         <div className="font-medium">送信完了</div>
-        <p className="mt-2 text-sm text-neutral-700">
-          お問い合わせありがとうございます。内容を確認のうえ、担当よりご連絡いたします。
-        </p>
-        <div className="text-xs text-neutral-400 mt-2">form v7</div>
+        <p className="mt-2 text-sm text-neutral-700">お問い合わせありがとうございます。内容を確認のうえ、担当よりご連絡いたします。</p>
+        <div className="text-xs text-neutral-400 mt-2">form v8</div>
       </div>
     )
   }
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit} noValidate>
+    <form ref={formRef} className="space-y-4" onSubmit={onSubmit} noValidate>
       {/* honeypot */}
       <input type="text" name="company" className="hidden" tabIndex={-1} autoComplete="off" />
 
@@ -156,7 +152,7 @@ export default function ContactForm(){
         {state==='sending' ? '送信中…' : '送信する'}
       </button>
 
-      <div className="text-xs text-neutral-400 mt-2">form v7</div>
+      <div className="text-xs text-neutral-400 mt-2">form v8</div>
     </form>
   )
 }
