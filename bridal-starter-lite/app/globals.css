@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body{@apply bg-white text-neutral-900}
+.container{@apply mx-auto max-w-6xl px-4}
+.card{@apply rounded-md border bg-white p-5}
+.btn{@apply rounded-none border px-4 py-2 text-sm}
+.small{@apply text-xs text-neutral-500}
