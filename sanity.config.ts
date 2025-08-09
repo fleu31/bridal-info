@@ -4,6 +4,9 @@ import article from './schemas/article'
 import clinic from './schemas/clinic'
 import page from './schemas/page'
 import home from './schemas/home'
+import site from './schemas/site'
+import toolChecker from './schemas/toolChecker'
+import toolChecklist72h from './schemas/toolChecklist72h'
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
@@ -17,5 +20,5 @@ export default defineConfig({
   apiVersion,
   basePath: '/studio',
   plugins: [deskTool()],
-  schema: {types: [article, clinic, page, home]},
+  schema: { types: [article, clinic, page, home, site, toolChecker, toolChecklist72h] }
 })
