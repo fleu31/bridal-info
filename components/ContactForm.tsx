@@ -4,11 +4,9 @@ import Script from 'next/script'
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
-type FieldErrors = Partial<Record<'name'|'email'|'message'|'consent'|'_global', string>>
-
 export default function ContactForm(){
   const [state, setState] = useState<'idle'|'sending'|'ok'|'err'>('idle')
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const [msg, setMsg] = useState<string>('') // エラー/案内の表示
   const [cfToken, setCfToken] = useState<string>('')
   const start = useRef<number>(Date.now())
 
@@ -18,31 +16,26 @@ export default function ContactForm(){
     return () => { delete (window as any).__onTurnstile }
   }, [])
 
-  function validateLocal(fd: FormData): FieldErrors {
-    const e: FieldErrors = {}
+  function validate(fd: FormData){
     const name = String(fd.get('name')||'').trim()
     const email = String(fd.get('email')||'').trim()
-    const msg = String(fd.get('message')||'').trim()
+    const text = String(fd.get('message')||'').trim()
     const consent = fd.get('consent') === 'on'
-    if (!name) e.name = '必須'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'メール形式が不正'
-    if (msg.length < 10) e.message = '本文は10文字以上'
-    if (!consent) e.consent = '同意が必要です'
-    return e
+    if (!name) return 'お名前は必須です'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'メール形式が不正です'
+    if (text.length < 10) return '本文は10文字以上で入力してください'
+    if (!consent) return '同意にチェックしてください'
+    return ''
   }
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>){
     e.preventDefault()
-    setErrors({})
+    setMsg('')
     setState('sending')
 
     const fd = new FormData(e.currentTarget)
-    const local = validateLocal(fd)
-    if (Object.keys(local).length) {
-      setErrors(local)
-      setState('err')
-      return
-    }
+    const v = validate(fd)
+    if (v) { setMsg(v); setState('err'); return }
 
     const payload = {
       name: String(fd.get('name')||'').trim(),
@@ -61,26 +54,13 @@ export default function ContactForm(){
     try {
       const r = await fetch('/api/contact', {
         method: 'POST',
-        headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
+        headers: { 'Content-Type':'application/json' },
         cache: 'no-store',
         body: JSON.stringify(payload)
       })
-      const raw = await r.text()
-      let data: any = null
-      try { data = raw ? JSON.parse(raw) : null } catch { data = null }
 
-      // 200 は原則成功扱い（サーバーが保存・通知に失敗してもユーザー体験優先）
-      if (r.status === 200) {
-        if (data?.errors) {
-          setErrors(data.errors)
-          setState('err')
-          return
-        }
-        if (data?.ok === false) {
-          setErrors({_global: String(data.error || '送信に失敗しました。')})
-          setState('err')
-          return
-        }
+      // ★ 本質：200 系なら問答無用で成功扱いにする（レスポンス本文は見ない）
+      if (r.ok) {
         setState('ok')
         e.currentTarget.reset()
         setCfToken('')
@@ -88,17 +68,12 @@ export default function ContactForm(){
         return
       }
 
-      // 200以外はメッセージを出す
-      if (data?.errors) {
-        setErrors(data.errors)
-      } else if (data?.error) {
-        setErrors({_global: String(data.error)})
-      } else {
-        setErrors({_global: `送信に失敗しました（${r.status}）`})
-      }
+      // 200 以外だけメッセージ表示（本文がJSONでなくてもOK）
+      const text = await r.text().catch(()=> '')
+      setMsg(text || `送信に失敗しました（${r.status}）`)
       setState('err')
     } catch {
-      setErrors({_global:'通信エラーが発生しました。'})
+      setMsg('通信エラーが発生しました。')
       setState('err')
     }
   }
@@ -107,25 +82,28 @@ export default function ContactForm(){
     return (
       <div className="card">
         <div className="font-medium">送信完了</div>
-        <p className="mt-2 text-sm text-neutral-700">お問い合わせありがとうございます。内容を確認のうえ、担当よりご連絡いたします。</p>
-        <button className="btn mt-3" onClick={()=>{ setState('idle'); setErrors({}); start.current = Date.now() }}>戻る</button>
+        <p className="mt-2 text-sm text-neutral-700">
+          お問い合わせありがとうございます。内容を確認のうえ、担当よりご連絡いたします。
+        </p>
+        <div className="text-xs text-neutral-400 mt-2">form v4</div>
+        <button className="btn mt-3" onClick={()=>{ setState('idle'); setMsg(''); start.current = Date.now() }}>戻る</button>
       </div>
     )
   }
 
   return (
     <form className="space-y-4" onSubmit={onSubmit} noValidate>
+      {/* honeypot */}
       <input type="text" name="company" className="hidden" tabIndex={-1} autoComplete="off" />
+
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm">お名前 *</label>
-          <input name="name" className="mt-1 w-full border p-2 rounded-none" aria-invalid={!!errors.name} />
-          {errors.name && <div className="text-xs text-red-600 mt-1">{errors.name}</div>}
+          <input name="name" className="mt-1 w-full border p-2 rounded-none" />
         </div>
         <div>
           <label className="text-sm">メールアドレス *</label>
-          <input name="email" type="email" className="mt-1 w-full border p-2 rounded-none" aria-invalid={!!errors.email} />
-          {errors.email && <div className="text-xs text-red-600 mt-1">{errors.email}</div>}
+          <input name="email" type="email" className="mt-1 w-full border p-2 rounded-none" />
         </div>
       </div>
 
@@ -148,8 +126,7 @@ export default function ContactForm(){
 
       <div>
         <label className="text-sm">本文 *</label>
-        <textarea name="message" rows={6} className="mt-1 w-full border p-2 rounded-none" aria-invalid={!!errors.message} />
-        {errors.message && <div className="text-xs text-red-600 mt-1">{errors.message}</div>}
+        <textarea name="message" rows={6} className="mt-1 w-full border p-2 rounded-none" />
       </div>
 
       <div className="text-xs text-neutral-600">
@@ -167,11 +144,14 @@ export default function ContactForm(){
         </>
       )}
 
-      {errors._global && <div className="text-sm text-red-600">{errors._global}</div>}
+      {msg && <div className="text-sm text-red-600">{msg}</div>}
 
       <button className="btn" disabled={state==='sending'}>
         {state==='sending' ? '送信中…' : '送信する'}
       </button>
+
+      {/* 現在のビルドが反映されたか確認用 */}
+      <div className="text-xs text-neutral-400 mt-2">form v4</div>
     </form>
   )
 }
