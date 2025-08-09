@@ -16,6 +16,7 @@ const TURNSTILE_SITE = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY || ''
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || ''
 
+// GETで状態確認
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -34,7 +35,7 @@ function escapeHtml(s: string) { return s.replace(/[&<>"']/g, (m) => ({'&':'&amp
 function nl2br(s: string) { return s.replace(/\n/g, '<br>') }
 
 export async function POST(req: NextRequest) {
-  let diag: string[] = []
+  const diag: string[] = []
   try {
     let body: any = {}
     try { body = await req.json() } catch { body = {}; diag.push('bad_json') }
@@ -45,19 +46,16 @@ export async function POST(req: NextRequest) {
       cfToken = '', path = '', ref = ''
     } = body || {}
 
-    // 必須チェック（不備でも成功を返す方針に変更。ただし診断用に記録）
-    const errors: Record<string, string> = {}
-    if (!name.trim()) errors.name = '必須'
-    if (!isEmail(email)) errors.email = 'メール形式が不正'
-    if (!message || String(message).trim().length < 10) errors.message = '本文は10文字以上'
-    if (!consent) errors.consent = '同意が必要'
-    if (Object.keys(errors).length) diag.push('validation')
+    // クライアントでも検証しているが、サーバ側でも軽く診断だけ加える
+    if (!name?.trim() || !isEmail(email) || !message || message.trim().length < 10 || !consent) {
+      diag.push('soft_validation')
+    }
 
     // スパム対策
     if (honey) { diag.push('honeypot'); return NextResponse.json({ ok: true, diag }) }
     if (typeof t === 'number' && t < 800) { diag.push('too_fast'); return NextResponse.json({ ok: true, diag }) }
 
-    // Turnstile（設定時のみ、失敗しても成功返却）
+    // Turnstile（設定時のみ。失敗しても成功で返す）
     if (TURNSTILE_SITE && TURNSTILE_SECRET) {
       try {
         if (!cfToken) diag.push('captcha_required')
@@ -74,7 +72,7 @@ export async function POST(req: NextRequest) {
       } catch { diag.push('captcha_verify_error') }
     }
 
-    // Sanity保存（任意）
+    // Sanity保存（ある場合のみ）
     if (token && projectId) {
       try {
         const client = createClient({ projectId, dataset, apiVersion, token, useCdn:false })
@@ -102,7 +100,7 @@ export async function POST(req: NextRequest) {
       } catch (e) { console.error('Slack error', e); diag.push('slack_error') }
     }
 
-    // メール通知（任意）
+    // メール通知＋自動返信（任意）
     if (RESEND_API_KEY && CONTACT_FROM && CONTACT_TO) {
       try {
         const html = `
@@ -113,21 +111,34 @@ export async function POST(req: NextRequest) {
           ${category ? `<p><strong>カテゴリ:</strong> ${escapeHtml(category)}</p>` : ''}
           <p><strong>本文:</strong><br>${nl2br(escapeHtml(message))}</p>
           <hr><p>path: ${escapeHtml(path||'')}</p><p>ref: ${escapeHtml(ref||'')}</p>`
+        // 管理者宛
         await fetch('https://api.resend.com/emails', {
           method:'POST',
           headers:{ 'Authorization':`Bearer ${RESEND_API_KEY}`, 'Content-Type':'application/json' },
           body:JSON.stringify({ from:CONTACT_FROM, to:[CONTACT_TO], subject:`お問い合わせ: ${name}`, html })
+        })
+        // 自動返信（ユーザー宛）
+        await fetch('https://api.resend.com/emails', {
+          method:'POST',
+          headers:{ 'Authorization':`Bearer ${RESEND_API_KEY}`, 'Content-Type':'application/json' },
+          body:JSON.stringify({
+            from: CONTACT_FROM,
+            to: [email],
+            subject: '【自動返信】お問い合わせありがとうございます',
+            html: `<p>${escapeHtml(name)} 様</p>
+                   <p>お問い合わせを受け付けました。担当よりご連絡いたします。</p>
+                   <hr><p>内容</p><p>${nl2br(escapeHtml(message))}</p>`
+          })
         })
       } catch (e) { console.error('Resend error', e); diag.push('resend_error') }
     } else {
       diag.push('no_email')
     }
 
-    // 成功として返す（診断情報だけ添付）
+    // 常に成功として返す
     return NextResponse.json({ ok: true, diag })
   } catch (e:any) {
     console.error('contact api fatal', e)
-    // 何があっても成功で返す（ユーザー体験優先）。サーバ側にはログが残る
     return NextResponse.json({ ok: true, diag: ['fatal_catch'] }, { status: 200 })
   }
 }
