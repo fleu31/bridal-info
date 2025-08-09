@@ -14,3 +14,12 @@ export const clinicsQuery = groq`
   *[_type == "clinic"] | order(kana asc){
     kana, name, area, labels, starts, concerns, dt, lastMinute, notes, url
   }`
+
+export const homeQuery = groq`
+  *[_type=="home"][0]{
+    heroTitle, heroLead, bullets,
+    heroButtons[]{label, url},
+    timeline[]{title, points},
+    concerns[]{tag, title, points},
+    disclaimer
+  }`
