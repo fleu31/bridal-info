@@ -17,7 +17,7 @@
     "sanity": "3.56.0",
     "@portabletext/react": "3.0.11",
     "groq": "3.60.0",
-    "@sanity/icons": "2.11.3"
+    "@sanity/icons": "3.7.4"
   },
   "devDependencies": {
     "typescript": "5.5.3",
@@ -29,8 +29,5 @@
     "@types/react": "18.2.77",
     "@types/react-dom": "18.2.23",
     "@types/node": "20.14.10"
-  },
-  "overrides": {
-    "@sanity/icons": "2.11.3"
   }
 }
