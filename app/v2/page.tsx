@@ -1,17 +1,6 @@
-import HeaderDIVE from '@/components/HeaderDIVE'
-
-export default function Page(){
-  return (
-    <main className="min-h-screen bg-stone-50">
-      <HeaderDIVE active="features" />
-      {/* ↓この下は今の /v2 のセクションでOK */}
-      ...
-    </main>
-  )
-}
-
 // app/v2/page.tsx
 import Link from 'next/link'
+import HeaderDIVE from '@/components/HeaderDIVE'
 
 export const metadata = {
   title: 'ブライダル美容ナビ – V2a プレビュー',
@@ -19,7 +8,7 @@ export const metadata = {
 }
 
 // アクセント（DIVE系の赤み）
-const ACCENT = 'rose-600' // tailwind の色名（例: rose-600）
+const ACCENT = 'rose-600' // 例: 'rose-600' | 'red-600'
 
 function Chip({ children, href }: {children: React.ReactNode; href: string}) {
   return (
@@ -64,23 +53,21 @@ function MosaicCard({ title, lead, href }: {title:string; lead:string; href:stri
 export default function Page() {
   return (
     <main className="min-h-screen bg-stone-50 text-neutral-900">
+      {/* DIVE風ヘッダー */}
+      <HeaderDIVE active="features" />
+
       {/* ===== Hero（フルブリード画像＋暗めオーバーレイ） ===== */}
       <section className="relative border-b border-neutral-200">
-        {/* ここを本番では背景画像に差し替え（/public/v2-hero.jpg を置けばOK） */}
-        <div
-          className="absolute inset-0 bg-center bg-cover"
-          style={{ backgroundImage: "url('/v2-hero.jpg')" }}
-        />
-        {/* 画像がまだ無いときのグラデ背景 */}
+        {/* /public/v2-hero.jpg を置けば背景画像に切り替わります */}
+        <div className="absolute inset-0 bg-center bg-cover" style={{ backgroundImage: "url('/v2-hero.jpg')" }} />
+        {/* 画像が無い時のグラデ */}
         <div className="absolute inset-0 bg-gradient-to-br from-stone-200 via-stone-100 to-white" />
         {/* 暗めオーバーレイ */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/15 to-transparent" />
 
         <div className="relative container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           <div className="max-w-3xl">
-            <div className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-${ACCENT}/10 text-${ACCENT} border border-${ACCENT}/20`}>
-              BRIDAL EDITORIAL
-            </div>
+            <div className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-${ACCENT}/10 text-${ACCENT} border border-${ACCENT}/20`}>BRIDAL EDITORIAL</div>
             <h1 className="mt-3 text-3xl sm:text-5xl font-semibold leading-tight text-white drop-shadow">
               結婚式までを“逆算”して、<br className="hidden sm:block" />
               ベストな美容医療を選ぶ
@@ -89,17 +76,11 @@ export default function Page() {
               期間・ダウンタイム・予算のバランスで、当日にベストコンディションを作るための特集＆ガイド。
             </p>
 
-            {/* クイックアクション */}
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/tools/checker" className={`no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-${ACCENT} text-white hover:opacity-95`}>
-                逆算チェッカー
-              </Link>
-              <Link href="/contact" className="no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-white/95 text-neutral-900 border border-white/60 hover:bg-white">
-                専門家に相談
-              </Link>
+              <Link href="/tools/checker" className={`no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-${ACCENT} text-white hover:opacity-95`}>逆算チェッカー</Link>
+              <Link href="/contact" className="no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-white/95 text-neutral-900 border border-white/60 hover:bg-white">専門家に相談</Link>
             </div>
 
-            {/* 検索チップ */}
             <div className="mt-6 space-y-3">
               <div className="text-xs font-medium text-white/80">時期から探す</div>
               <div className="flex flex-wrap gap-2">
@@ -114,29 +95,29 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ===== 特集（大きめカード／3カラム） ===== */}
-      <section className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+      {/* ===== 特集 ===== */}
+      <section id="features" className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <div className="flex items-end justify-between">
           <h2 className="text-2xl sm:text-3xl font-semibold">特集</h2>
           <Link href="/faq" className="text-sm text-neutral-500 hover:underline">編集方針</Link>
         </div>
         <div className="mt-6 grid md:grid-cols-3 gap-6">
-          <FeatureCard tag="半年〜" title="時間を味方に。肌質改善の王道ロードマップ" href="/directory?when=6m" />
-          <FeatureCard tag="1か月前" title="DT少なめで透明感UPの現実解" href="/directory?when=1m" />
-          <FeatureCard tag="直前" title="前日〜当日にやる／やらない" href="/faq#last-minute" />
+          <FeatureCard tag="半年〜"   title="時間を味方に。肌質改善の王道ロードマップ" href="/directory?when=6m" />
+          <FeatureCard tag="1か月前" title="DT少なめで透明感UPの現実解"           href="/directory?when=1m" />
+          <FeatureCard tag="直前"     title="前日〜当日にやる／やらない"           href="/faq#last-minute" />
         </div>
       </section>
 
-      {/* ===== 期間別ガイド（タイル） ===== */}
-      <section className="bg-white border-y border-neutral-200">
+      {/* ===== 期間別ガイド ===== */}
+      <section id="timeline" className="bg-white border-y border-neutral-200">
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <h2 className="text-2xl sm:text-3xl font-semibold">期間別ガイド</h2>
           <div className="mt-6 grid md:grid-cols-4 gap-4">
             {[
-              {title:'半年〜', pts:['角層リニューアル','色素沈着ケア','土台づくり'], href:'/directory?when=6m'},
-              {title:'3か月前', pts:['毛穴・質感UP','ボディ調整','ホーム固定'], href:'/directory?when=3m'},
-              {title:'1か月前', pts:['DT最小','くすみ対策','むくみケア'], href:'/directory?when=1m'},
-              {title:'直前〜当日', pts:['強刺激は避ける','睡眠と水分','当日ルーティン'], href:'/faq#last-minute'},
+              {title:'半年〜',     pts:['角層リニューアル','色素沈着ケア','土台づくり'],         href:'/directory?when=6m'},
+              {title:'3か月前',   pts:['毛穴・質感UP','ボディ調整','ホーム固定'],             href:'/directory?when=3m'},
+              {title:'1か月前',   pts:['DT最小','くすみ対策','むくみケア'],                   href:'/directory?when=1m'},
+              {title:'直前〜当日', pts:['強刺激は避ける','睡眠と水分','当日ルーティン'],         href:'/faq#last-minute'},
             ].map((b,i)=>(
               <Link key={i} href={b.href} className="no-underline">
                 <div className="rounded-2xl border border-neutral-200 bg-stone-50 p-4 h-full hover:bg-stone-100 transition">
@@ -151,7 +132,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ===== 人気の施術（モザイク） ===== */}
+      {/* ===== 人気の施術 ===== */}
       <section className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <div className="flex items-end justify-between">
           <h2 className="text-2xl sm:text-3xl font-semibold">人気の施術</h2>
@@ -159,8 +140,8 @@ export default function Page() {
         </div>
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <MosaicCard title="ダーマペン＋成長因子" lead="質感と毛穴、ニキビ跡のベースアップ" href="/directory?tag=ダーマペン" />
-          <MosaicCard title="IPL（フォト）" lead="くすみ・赤み・色むらをまとめて整える" href="/directory?tag=IPL" />
-          <MosaicCard title="ピーリング＋イオン導入" lead="DT控えめに透明感を底上げ" href="/directory?tag=ピーリング" />
+          <MosaicCard title="IPL（フォト）" lead="くすみ・赤み・色むらをまとめて整える"     href="/directory?tag=IPL" />
+          <MosaicCard title="ピーリング＋イオン導入" lead="DT控えめに透明感を底上げ"           href="/directory?tag=ピーリング" />
         </div>
       </section>
 
@@ -193,12 +174,8 @@ export default function Page() {
             <p className="text-sm text-neutral-600 mt-1">所要2分。ダウンタイムと効果の出方で自動判定。</p>
           </div>
           <div className="flex gap-3">
-            <Link href="/tools/checker" className={`no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-${ACCENT} text-white hover:opacity-95`}>
-              逆算チェッカー
-            </Link>
-            <Link href="/contact" className="no-underline inline-flex items-center px-5 py-2.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100">
-              無料で相談
-            </Link>
+            <Link href="/tools/checker" className={`no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-${ACCENT} text-white hover:opacity-95`}>逆算チェッカー</Link>
+            <Link href="/contact" className="no-underline inline-flex items-center px-5 py-2.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100">無料で相談</Link>
           </div>
         </div>
         <div className="text-xs text-neutral-500 mt-3">※ 医療行為は提携クリニックで実施。最終適応・同意説明は各院で行います。</div>
