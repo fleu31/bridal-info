@@ -1,1 +1,0 @@
-# Bridal Starter Lite\n\nNext.js + Tailwind の最小スターター（情報提供ファースト）。\n\n## 使い方\n1) このZIPを解凍→GitHub新規リポへ全ファイルをアップロード\n2) Vercel: Add New → Project → Import Git Repository → Deploy\n3) 数十秒で `{project}.vercel.app` が表示されます\n
