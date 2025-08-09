@@ -2,128 +2,134 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'ブライダル美容ナビ – V2 プレビュー',
-  description: '見た目確認用のV2ランディング（静的モック）',
+  title: 'ブライダル美容ナビ – V2a プレビュー',
+  description: 'DIVE系ポータル風の見た目確認用（静的モック）',
 }
+
+// アクセント（DIVE系の赤み）
+const ACCENT = 'rose-600' // tailwind の色名（例: rose-600）
 
 function Chip({ children, href }: {children: React.ReactNode; href: string}) {
   return (
     <Link href={href} className="no-underline">
-      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-200 text-sm bg-white hover:bg-neutral-50">
+      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/95 text-neutral-800 border border-white/60 shadow-sm hover:bg-white">
         {children}
       </span>
     </Link>
   )
 }
 
-function Card({ children }: {children: React.ReactNode}) {
+function FeatureCard({ tag, title, href }: {tag:string; title:string; href:string}) {
   return (
-    <div className="group rounded-xl border border-neutral-200 overflow-hidden bg-white hover:shadow-lg transition">
-      {children}
-    </div>
+    <Link href={href} className="no-underline group">
+      <article className="rounded-2xl overflow-hidden bg-white border border-neutral-200 shadow-sm hover:shadow-lg transition">
+        <div className="relative aspect-[16/9] bg-gradient-to-br from-neutral-200 to-neutral-100">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent opacity-0 group-hover:opacity-100 transition" />
+        </div>
+        <div className="p-4">
+          <span className={`inline-block text-xs font-medium text-${ACCENT}`}>{tag}</span>
+          <h3 className="mt-1 font-semibold text-neutral-900 leading-snug">{title}</h3>
+        </div>
+      </article>
+    </Link>
+  )
+}
+
+function MosaicCard({ title, lead, href }: {title:string; lead:string; href:string}) {
+  return (
+    <Link href={href} className="no-underline group">
+      <article className="h-full rounded-2xl overflow-hidden bg-white border border-neutral-200 shadow-sm hover:shadow-lg transition">
+        <div className="aspect-[4/3] bg-neutral-100" />
+        <div className="p-4">
+          <h4 className="font-semibold text-neutral-900">{title}</h4>
+          <p className="text-sm text-neutral-600 mt-1 line-clamp-2">{lead}</p>
+        </div>
+      </article>
+    </Link>
   )
 }
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-neutral-200">
-        <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 via-white to-neutral-50" />
+    <main className="min-h-screen bg-stone-50 text-neutral-900">
+      {/* ===== Hero（フルブリード画像＋暗めオーバーレイ） ===== */}
+      <section className="relative border-b border-neutral-200">
+        {/* ここを本番では背景画像に差し替え（/public/v2-hero.jpg を置けばOK） */}
+        <div
+          className="absolute inset-0 bg-center bg-cover"
+          style={{ backgroundImage: "url('/v2-hero.jpg')" }}
+        />
+        {/* 画像がまだ無いときのグラデ背景 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-stone-200 via-stone-100 to-white" />
+        {/* 暗めオーバーレイ */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/15 to-transparent" />
+
         <div className="relative container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
-            <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold leading-tight">
-                結婚式までの“逆算”で<br className="hidden sm:block" />
-                ベストな美容医療を見つける
-              </h1>
-              <p className="mt-4 text-neutral-600 text-base sm:text-lg">
-                半年前から直前まで。ダウンタイム・予算・効果の出方を踏まえ
-                <span className="whitespace-nowrap">「当日が一番きれい」</span>を叶えるための編集ガイド。
-              </p>
+          <div className="max-w-3xl">
+            <div className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-${ACCENT}/10 text-${ACCENT} border border-${ACCENT}/20`}>
+              BRIDAL EDITORIAL
+            </div>
+            <h1 className="mt-3 text-3xl sm:text-5xl font-semibold leading-tight text-white drop-shadow">
+              結婚式までを“逆算”して、<br className="hidden sm:block" />
+              ベストな美容医療を選ぶ
+            </h1>
+            <p className="mt-4 text-stone-100/90 text-base sm:text-lg">
+              期間・ダウンタイム・予算のバランスで、当日にベストコンディションを作るための特集＆ガイド。
+            </p>
 
-              {/* Quick actions */}
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/tools/checker" className="btn no-underline inline-flex items-center px-4 py-2 rounded-full bg-black text-white hover:opacity-90">
-                  逆算チェッカー
-                </Link>
-                <Link href="/contact" className="no-underline inline-flex items-center px-4 py-2 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100">
-                  専門家に相談
-                </Link>
-              </div>
-
-              {/* Search chips */}
-              <div className="mt-8 space-y-3">
-                <div className="text-sm font-medium text-neutral-500">時期で見る</div>
-                <div className="flex flex-wrap gap-2">
-                  <Chip href="/directory?when=6m">⏳ 半年前〜</Chip>
-                  <Chip href="/directory?when=3m">⏳ 3か月前</Chip>
-                  <Chip href="/directory?when=1m">⏳ 1か月前</Chip>
-                  <Chip href="/directory?when=2w">⏳ 2週間前</Chip>
-                  <Chip href="/directory?when=last">⚡ 直前</Chip>
-                </div>
-                <div className="text-sm font-medium text-neutral-500 mt-4">悩みで見る</div>
-                <div className="flex flex-wrap gap-2">
-                  <Chip href="/directory?tag=肌質改善">💧 肌質改善</Chip>
-                  <Chip href="/directory?tag=毛穴">🕳️ 毛穴</Chip>
-                  <Chip href="/directory?tag=美白">✨ 美白</Chip>
-                  <Chip href="/directory?tag=痩身">🏃 痩身</Chip>
-                  <Chip href="/directory?tag=小顔">🙂 小顔</Chip>
-                </div>
-              </div>
+            {/* クイックアクション */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/tools/checker" className={`no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-${ACCENT} text-white hover:opacity-95`}>
+                逆算チェッカー
+              </Link>
+              <Link href="/contact" className="no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-white/95 text-neutral-900 border border-white/60 hover:bg-white">
+                専門家に相談
+              </Link>
             </div>
 
-            {/* Visual area（プレースホルダ）*/}
-            <div className="relative">
-              <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-neutral-200 via-white to-neutral-100 border border-neutral-200" />
-              <div className="absolute -bottom-6 -left-6 w-44 h-36 rounded-xl bg-white border border-neutral-200 shadow-sm hidden sm:block" />
-              <div className="absolute -top-6 -right-6 w-40 h-40 rounded-full bg-white border border-neutral-200 shadow-sm hidden sm:block" />
+            {/* 検索チップ */}
+            <div className="mt-6 space-y-3">
+              <div className="text-xs font-medium text-white/80">時期から探す</div>
+              <div className="flex flex-wrap gap-2">
+                <Chip href="/directory?when=6m">⏳ 半年前〜</Chip>
+                <Chip href="/directory?when=3m">⏳ 3か月前</Chip>
+                <Chip href="/directory?when=1m">⏳ 1か月前</Chip>
+                <Chip href="/directory?when=2w">⏳ 2週間前</Chip>
+                <Chip href="/directory?when=last">⚡ 直前</Chip>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 特集 */}
+      {/* ===== 特集（大きめカード／3カラム） ===== */}
       <section className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <div className="flex items-end justify-between">
           <h2 className="text-2xl sm:text-3xl font-semibold">特集</h2>
-          <Link href="/faq" className="text-sm text-neutral-500 hover:underline">編集方針を見る</Link>
+          <Link href="/faq" className="text-sm text-neutral-500 hover:underline">編集方針</Link>
         </div>
-
         <div className="mt-6 grid md:grid-cols-3 gap-6">
-          {[
-            { tag:'半年〜', title:'時間が味方。肌質改善の王道ロードマップ', href:'/directory?when=6m' },
-            { tag:'1か月前', title:'ダウンタイム少なめで透明感を底上げ', href:'/directory?when=1m' },
-            { tag:'直前', title:'前日〜当日できること・やってはいけないこと', href:'/faq#last-minute' },
-          ].map((f, i) => (
-            <Link key={i} href={f.href} className="no-underline">
-              <Card>
-                <div className="aspect-[16/9] bg-gradient-to-br from-neutral-200 to-neutral-100" />
-                <div className="p-4">
-                  <div className="text-xs text-neutral-500">{f.tag}</div>
-                  <div className="mt-1 font-medium">{f.title}</div>
-                </div>
-              </Card>
-            </Link>
-          ))}
+          <FeatureCard tag="半年〜" title="時間を味方に。肌質改善の王道ロードマップ" href="/directory?when=6m" />
+          <FeatureCard tag="1か月前" title="DT少なめで透明感UPの現実解" href="/directory?when=1m" />
+          <FeatureCard tag="直前" title="前日〜当日にやる／やらない" href="/faq#last-minute" />
         </div>
       </section>
 
-      {/* 期間別ガイド */}
+      {/* ===== 期間別ガイド（タイル） ===== */}
       <section className="bg-white border-y border-neutral-200">
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <h2 className="text-2xl sm:text-3xl font-semibold">期間別ガイド</h2>
           <div className="mt-6 grid md:grid-cols-4 gap-4">
             {[
-              {title:'半年〜', pts:['角層リニューアル','色素沈着ケア','ベースづくり'], href:'/directory?when=6m'},
-              {title:'3か月前', pts:['毛穴・質感アップ','ボディ調整','ホームケア固定'], href:'/directory?when=3m'},
-              {title:'1か月前', pts:['ダウンタイム最小','くすみ対策','むくみケア'], href:'/directory?when=1m'},
-              {title:'直前〜当日', pts:['刺激の強い施術は×','睡眠と水分','当日ルーティン'], href:'/faq#last-minute'},
+              {title:'半年〜', pts:['角層リニューアル','色素沈着ケア','土台づくり'], href:'/directory?when=6m'},
+              {title:'3か月前', pts:['毛穴・質感UP','ボディ調整','ホーム固定'], href:'/directory?when=3m'},
+              {title:'1か月前', pts:['DT最小','くすみ対策','むくみケア'], href:'/directory?when=1m'},
+              {title:'直前〜当日', pts:['強刺激は避ける','睡眠と水分','当日ルーティン'], href:'/faq#last-minute'},
             ].map((b,i)=>(
               <Link key={i} href={b.href} className="no-underline">
-                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 h-full hover:bg-neutral-100 transition">
-                  <div className="font-medium">{b.title}</div>
-                  <ul className="mt-2 text-sm text-neutral-600 space-y-1 list-disc pl-5">
+                <div className="rounded-2xl border border-neutral-200 bg-stone-50 p-4 h-full hover:bg-stone-100 transition">
+                  <div className={`text-sm font-semibold text-${ACCENT}`}>{b.title}</div>
+                  <ul className="mt-2 text-sm text-neutral-700 space-y-1 list-disc pl-5">
                     {b.pts.map((p, idx)=> <li key={idx}>{p}</li>)}
                   </ul>
                 </div>
@@ -133,68 +139,57 @@ export default function Page() {
         </div>
       </section>
 
-      {/* 人気の施術 */}
+      {/* ===== 人気の施術（モザイク） ===== */}
       <section className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <h2 className="text-2xl sm:text-3xl font-semibold">人気の施術</h2>
+        <div className="flex items-end justify-between">
+          <h2 className="text-2xl sm:text-3xl font-semibold">人気の施術</h2>
+          <Link href="/directory" className="text-sm text-neutral-500 hover:underline">すべて見る</Link>
+        </div>
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {title:'ダーマペン＋成長因子', lead:'質感・毛穴・ニキビ跡のベースアップ', href:'/directory?tag=ダーマペン'},
-            {title:'IPL（フォト）', lead:'くすみ・赤み・色むらをまとめて整える', href:'/directory?tag=IPL'},
-            {title:'ピーリング＋イオン導入', lead:'ダウンタイム控えめに透明感UP', href:'/directory?tag=ピーリング'},
-          ].map((c,i)=>(
-            <Link key={i} href={c.href} className="no-underline">
-              <Card>
-                <div className="aspect-[4/3] bg-neutral-100" />
-                <div className="p-4">
-                  <div className="font-medium">{c.title}</div>
-                  <p className="text-sm text-neutral-600 mt-1">{c.lead}</p>
-                </div>
-              </Card>
-            </Link>
-          ))}
+          <MosaicCard title="ダーマペン＋成長因子" lead="質感と毛穴、ニキビ跡のベースアップ" href="/directory?tag=ダーマペン" />
+          <MosaicCard title="IPL（フォト）" lead="くすみ・赤み・色むらをまとめて整える" href="/directory?tag=IPL" />
+          <MosaicCard title="ピーリング＋イオン導入" lead="DT控えめに透明感を底上げ" href="/directory?tag=ピーリング" />
         </div>
       </section>
 
-      {/* 体験談・読みもの（ダミー） */}
+      {/* ===== 読みもの ===== */}
       <section className="bg-white border-t border-neutral-200">
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <h2 className="text-2xl sm:text-3xl font-semibold">編集部おすすめ</h2>
           <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1,2,3].map(i=>(
               <Link key={i} href="/faq" className="no-underline">
-                <Card>
+                <article className="rounded-2xl overflow-hidden bg-white border border-neutral-200 shadow-sm hover:shadow-lg transition">
                   <div className="aspect-[16/9] bg-neutral-100" />
                   <div className="p-4">
-                    <div className="text-xs text-neutral-500">GUIDE</div>
-                    <div className="font-medium mt-1">失敗しない直前ケアのコツ {i}</div>
-                    <p className="text-sm text-neutral-600 mt-1 line-clamp-2">
-                      赤み・むくみを避けつつ、写真で映える“艶”を出すためのミニマム施術とホームケア。
-                    </p>
+                    <div className={`text-xs font-medium text-${ACCENT}`}>GUIDE</div>
+                    <div className="font-semibold mt-1">失敗しない直前ケアのコツ {i}</div>
+                    <p className="text-sm text-neutral-600 mt-1 line-clamp-2">赤み・むくみを避けつつ、写真で映える“艶”を出すための最小施術とホームケア。</p>
                   </div>
-                </Card>
+                </article>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ===== CTA ===== */}
       <section className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12">
         <div className="rounded-2xl border border-neutral-200 p-6 md:p-8 bg-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="text-lg font-medium">いつが結婚式？逆算で最適な施術を提案します</div>
+            <div className="text-lg font-semibold">いつが結婚式？逆算で最適な施術を提案します</div>
             <p className="text-sm text-neutral-600 mt-1">所要2分。ダウンタイムと効果の出方で自動判定。</p>
           </div>
           <div className="flex gap-3">
-            <Link href="/tools/checker" className="btn no-underline inline-flex items-center px-4 py-2 rounded-full bg-black text-white hover:opacity-90">
+            <Link href="/tools/checker" className={`no-underline inline-flex items-center px-5 py-2.5 rounded-full bg-${ACCENT} text-white hover:opacity-95`}>
               逆算チェッカー
             </Link>
-            <Link href="/contact" className="no-underline inline-flex items-center px-4 py-2 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100">
+            <Link href="/contact" className="no-underline inline-flex items-center px-5 py-2.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100">
               無料で相談
             </Link>
           </div>
         </div>
-        <div className="text-xs text-neutral-500 mt-3">※ 医療行為は提携クリニックで実施。最終的な適応・同意説明は各院で行います。</div>
+        <div className="text-xs text-neutral-500 mt-3">※ 医療行為は提携クリニックで実施。最終適応・同意説明は各院で行います。</div>
       </section>
     </main>
   )
