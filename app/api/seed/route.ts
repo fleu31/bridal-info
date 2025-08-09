@@ -1,7 +1,8 @@
-import {NextResponse} from 'next/server'
-import {createClient} from '@sanity/client'
+import { NextResponse } from 'next/server'
+import { createClient } from '@sanity/client'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs' // SanityクライアントをNodeで使う
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
@@ -26,7 +27,8 @@ export async function GET(req: Request) {
 
     const client = createClient({ projectId, dataset, apiVersion, token, useCdn: false })
 
-    const docs = [
+    // ★ 型を緩める（複数ドキュメント型をまとめて投入するため）
+    const docs: any[] = [
       // サイト設定
       {
         _id: 'siteSettings',
@@ -131,7 +133,7 @@ export async function GET(req: Request) {
         ]
       },
 
-      // 記事サンプル（1本）
+      // 記事サンプル
       {
         _id: 'article-sample-1',
         _type: 'article',
@@ -147,7 +149,7 @@ export async function GET(req: Request) {
     ]
 
     const tx = client.transaction()
-    docs.forEach((d) => tx.createOrReplace(d))
+    docs.forEach((d: any) => tx.createOrReplace(d)) // 型をanyで投入
     await tx.commit()
 
     return NextResponse.json({ ok: true, created: docs.length })
