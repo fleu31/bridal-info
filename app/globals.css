@@ -6,3 +6,4 @@ body{@apply bg-white text-neutral-900}
 .card{@apply rounded-md border bg-white p-5}
 .btn{@apply rounded-none border px-4 py-2 text-sm}
 .small{@apply text-xs text-neutral-500}
+.container{ max-width:72rem; }
