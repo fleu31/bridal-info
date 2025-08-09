@@ -5,6 +5,8 @@
       "dom",
       "dom.iterable",
       "esnext"
+      "baseUrl": ".",
+    "paths": { "@/*": ["./*"] 
     ],
     "strict": true,
     "noEmit": true,
