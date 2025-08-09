@@ -1,3 +1,15 @@
+import HeaderDIVE from '@/components/HeaderDIVE'
+
+export default function Page(){
+  return (
+    <main className="min-h-screen bg-stone-50">
+      <HeaderDIVE active="features" />
+      {/* ↓この下は今の /v2 のセクションでOK */}
+      ...
+    </main>
+  )
+}
+
 // app/v2/page.tsx
 import Link from 'next/link'
 
