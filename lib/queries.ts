@@ -1,5 +1,13 @@
 import {groq} from 'next-sanity'
 
+export const siteSettingsQuery = groq`
+  *[_type=="site"][0]{
+    siteName, footerNote,
+    navItems[]{label, href},
+    footerLinks[]{label, href},
+    logo{..., alt}
+  }`
+
 export const articlesListQuery = groq`
   *[_type == "article"] | order(updatedAt desc) {
     title, "slug": slug.current, category, updatedAt
@@ -15,6 +23,11 @@ export const clinicsQuery = groq`
     kana, name, area, labels, starts, concerns, dt, lastMinute, notes, url
   }`
 
+export const pageBySlugQuery = groq`
+  *[_type=="page" && slug.current==$slug][0]{
+    title, "slug": slug.current, body
+  }`
+
 export const homeQuery = groq`
   *[_type=="home"][0]{
     heroTitle, heroLead, bullets,
@@ -24,3 +37,9 @@ export const homeQuery = groq`
     disclaimer,
     heroImage{..., alt}
   }`
+
+export const checkerSettingsQuery = groq`
+  *[_type=="toolChecker"][0]{disclaimer}`
+
+export const checklist72hQuery = groq`
+  *[_type=="toolChecklist72h"][0]{intro, items}`
