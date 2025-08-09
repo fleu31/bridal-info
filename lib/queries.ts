@@ -21,5 +21,6 @@ export const homeQuery = groq`
     heroButtons[]{label, url},
     timeline[]{title, points},
     concerns[]{tag, title, points},
-    disclaimer
+    disclaimer,
+    heroImage{..., alt}
   }`
