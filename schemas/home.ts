@@ -30,6 +30,13 @@ export default defineType({
         {name:'points', title:'ポイント', type:'array', of:[{type:'string'}]}
       ]}]
     }),
-    defineField({name:'disclaimer', title:'注記（フッター下の注意書きなど）', type:'text'})
+    defineField({
+      name:'heroImage',
+      title:'ヒーロー画像',
+      type:'image',
+      options:{hotspot:true},
+      fields:[{name:'alt', title:'代替テキスト', type:'string'}]
+    }),
+    defineField({name:'disclaimer', title:'注記', type:'text'})
   ]
 })
