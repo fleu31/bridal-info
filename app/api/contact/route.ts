@@ -4,26 +4,25 @@ import { createClient } from '@sanity/client'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Sanity
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || ''
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
 const apiVersion = process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2023-10-01'
 const token = process.env.SANITY_API_TOKEN || ''
 
-// Slack
+// Slack（Webhook or Bot どちらでも可）
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || ''
 const SLACK_MENTION = process.env.SLACK_MENTION || ''
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN || ''
 const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || ''
 const SLACK_CHANNEL_MAP = safeParseMap(process.env.SLACK_CHANNEL_MAP || '')
 
-// Mail (任意・未設定ならスキップ)
+// Resend（任意・未設定ならスキップ）
 const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
 const CONTACT_TO = process.env.CONTACT_TO || ''
 const CONTACT_FROM = process.env.CONTACT_FROM || ''
 
-function safeParseMap(json: string): Record<string,string> {
-  try { return json ? JSON.parse(json) : {} } catch { return {} }
-}
+function safeParseMap(json: string): Record<string,string> { try { return json ? JSON.parse(json) : {} } catch { return {} } }
 function isEmail(v?: string) { return !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) }
 function escapeHtml(s: string) { return s.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m] as string)) }
 function nl2br(s: string) { return s.replace(/\n/g, '<br>') }
@@ -44,32 +43,31 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const diag: string[] = []
   try {
-    // ---- 入力 ----
+    // 入力
     let body: any = {}
     try { body = await req.json() } catch { body = {}; diag.push('bad_json') }
-
     const {
       name = '', email = '', phone = '', category = '',
       message = '', consent = false, t = 0, honey = '',
       cfToken = '', path = '', ref = ''
     } = body || {}
 
-    // ---- 軽い検証（落とさず diag に記録）----
+    // 軽い検証（落とさない）
     if (!name?.trim() || !isEmail(email) || !message || message.trim().length < 10 || !consent) {
       diag.push('soft_validation')
     }
-    if (honey) { diag.push('honeypot'); return NextResponse.json({ ok: true, diag }) }
-    if (typeof t === 'number' && t < 800) { diag.push('too_fast'); return NextResponse.json({ ok: true, diag }) }
+    // スパム対策（ハニーポット / 早すぎ）
+    if (honey) return NextResponse.json({ ok: true, diag: [...diag, 'honeypot'] })
+    if (typeof t === 'number' && t < 800) return NextResponse.json({ ok: true, diag: [...diag, 'too_fast'] })
 
-    // ---- 保存 ----
-    let saved: any = null
+    // 保存
     let docId = ''
     if (token && projectId) {
       try {
         const client = createClient({ projectId, dataset, apiVersion, token, useCdn:false })
-        saved = await client.create({
+        const saved = await client.create({
           _type:'inquiry', name, email, phone, category, message, consent,
-          path, ref, honey:Boolean(honey), createdAt:new Date().toISOString(),
+          path, ref, honey:Boolean(honey), createdAt:new Date().toISOString()
         })
         docId = saved?._id || ''
       } catch (e) { console.error('Sanity save error', e); diag.push('sanity_error') }
@@ -77,73 +75,50 @@ export async function POST(req: NextRequest) {
       diag.push('no_sanity_write')
     }
 
-    // ---- スタジオの深いリンク作成 ----
+    // Studio 深いリンク
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || ''
     const proto = req.headers.get('x-forwarded-proto') || 'https'
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (host ? `${proto}://${host}` : '')
-    const studioDeepLink = docId && siteUrl
-      ? `${siteUrl}/studio/intent/edit/id=${docId};type=inquiry`
-      : (siteUrl ? `${siteUrl}/studio` : '')
+    const studioDeepLink = docId && siteUrl ? `${siteUrl}/studio/intent/edit/id=${docId};type=inquiry` : (siteUrl ? `${siteUrl}/studio` : '')
 
-    // ---- Slack 通知（Webhook or Bot）----
+    // Slack 通知（Block Kit + mailto プリセット）
     const slackPayload = buildSlackBlocks({
-      mention: SLACK_MENTION,
-      name, email, phone, category, message, path, ref, studioDeepLink
+      mention: SLACK_MENTION, name, email, phone, category, message, path, ref, studioDeepLink
     })
-
     let slackTs = '', slackChannel = ''
     try {
       if (SLACK_BOT_TOKEN) {
-        // --- Bot 方式（メンション確実 / マルチチャンネル / スレッド化が可能） ---
         const channel = (category && SLACK_CHANNEL_MAP[category]) || SLACK_CHANNEL_ID
         if (!channel) throw new Error('no_channel_for_bot')
         const r = await fetch('https://slack.com/api/chat.postMessage', {
           method:'POST',
-          headers:{
-            'Authorization':`Bearer ${SLACK_BOT_TOKEN}`,
-            'Content-Type':'application/json; charset=utf-8'
-          },
-          body: JSON.stringify({
-            channel,
-            text: slackPayload.fallbackText,
-            blocks: slackPayload.blocks
-          })
+          headers:{ 'Authorization':`Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type':'application/json; charset=utf-8' },
+          body: JSON.stringify({ channel, text: slackPayload.fallbackText, blocks: slackPayload.blocks })
         })
         const data = await r.json().catch(()=>({ok:false}))
         if (!data.ok) throw new Error('slack_api_error')
         slackTs = data.ts || ''
         slackChannel = data.channel || channel
       } else if (SLACK_WEBHOOK_URL) {
-        // --- Webhook 方式（チャンネル固定 / 一部メンション可） ---
         await fetch(SLACK_WEBHOOK_URL, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({
-            text: slackPayload.fallbackText,
-            blocks: slackPayload.blocks
-          })
+          method:'POST', headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ text: slackPayload.fallbackText, blocks: slackPayload.blocks })
         })
         slackChannel = 'webhook'
       } else {
         diag.push('no_slack')
       }
-    } catch (e) {
-      console.error('Slack error', e)
-      diag.push('slack_error')
-    }
+    } catch (e) { console.error('Slack error', e); diag.push('slack_error') }
 
-    // ---- Slack送信メタをSanityに書き戻し ----
+    // Slack 送信メタ書き戻し（任意）
     if (docId && token && projectId) {
       try {
         const client = createClient({ projectId, dataset, apiVersion, token, useCdn:false })
-        await client.patch(docId).set({
-          slackPosted: slackChannel ? true : false,
-          slackChannel, slackTs
-        }).commit()
+        await client.patch(docId).set({ slackPosted: !!slackChannel, slackChannel, slackTs }).commit()
       } catch (e) { console.error('Sanity patch error', e) }
     }
 
-    // ---- メール通知（任意：設定時のみ）----
+    // メール通知（任意：未設定ならスキップ）
     if (RESEND_API_KEY && CONTACT_FROM && CONTACT_TO) {
       try {
         const html = `
@@ -155,19 +130,16 @@ export async function POST(req: NextRequest) {
           <p><strong>本文:</strong><br>${nl2br(escapeHtml(message))}</p>
           ${studioDeepLink ? `<p><a href="${studioDeepLink}">Studioで開く</a></p>` : ''}
           <hr><p>path: ${escapeHtml(path||'')}</p><p>ref: ${escapeHtml(ref||'')}</p>`
-        // 管理者
         await fetch('https://api.resend.com/emails', {
           method:'POST',
           headers:{ 'Authorization':`Bearer ${RESEND_API_KEY}`, 'Content-Type':'application/json' },
-          body:JSON.stringify({ from:CONTACT_FROM, to:[CONTACT_TO], subject:`お問い合わせ: ${name}`, html })
+          body: JSON.stringify({ from:CONTACT_FROM, to:[CONTACT_TO], subject:`お問い合わせ: ${name}`, html })
         })
-        // 自動返信
         await fetch('https://api.resend.com/emails', {
           method:'POST',
           headers:{ 'Authorization':`Bearer ${RESEND_API_KEY}`, 'Content-Type':'application/json' },
-          body:JSON.stringify({
-            from: CONTACT_FROM,
-            to: [email],
+          body: JSON.stringify({
+            from: CONTACT_FROM, to: [email],
             subject: '【自動返信】お問い合わせありがとうございます',
             html: `<p>${escapeHtml(name)} 様</p>
                    <p>お問い合わせを受け付けました。担当よりご連絡いたします。</p>
@@ -179,7 +151,6 @@ export async function POST(req: NextRequest) {
       diag.push('no_email')
     }
 
-    // ---- 常に成功返却（UX優先）----
     return NextResponse.json({ ok: true, diag, docId, slack: { channel: slackChannel, ts: slackTs } })
   } catch (e:any) {
     console.error('contact api fatal', e)
@@ -187,7 +158,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// --- Block Kit 生成 ---
+// ---------- Block Kit（mailto 事前入力つき） ----------
 function buildSlackBlocks(input: {
   mention: string, name: string, email: string, phone: string, category: string,
   message: string, path: string, ref: string, studioDeepLink: string
@@ -195,6 +166,7 @@ function buildSlackBlocks(input: {
   const header = '新しいお問い合わせ'
   const mentionLine = input.mention ? `${input.mention} ` : ''
   const fallbackText = `${mentionLine}${header} - ${input.name} (${input.email})`
+
   const fields: string[] = []
   if (input.name) fields.push(`*名前:*\n${input.name}`)
   if (input.email) fields.push(`*メール:*\n${input.email}`)
@@ -203,6 +175,23 @@ function buildSlackBlocks(input: {
   if (input.path) fields.push(`*from:*\n${input.path}`)
   if (input.ref) fields.push(`*ref:*\n${input.ref}`)
 
+  // ★ ここで件名/本文をプリセット
+  const subject = encodeURIComponent(`ブライダル美容のお問い合わせ（${input.name || 'お客様'}様）`)
+  const body = encodeURIComponent(
+`【${input.name || ''} 様】
+
+お問い合わせありがとうございます。
+こちらはブライダル美容医療の窓口です。以下の内容で承りました。
+----------------
+カテゴリ: ${input.category || '-'}
+本文:
+${input.message || '-'}
+----------------
+
+このメールにご返信ください。`
+  )
+  const mailto = input.email ? `mailto:${input.email}?subject=${subject}&body=${body}` : ''
+
   const blocks: any[] = [
     { type: 'header', text: { type: 'plain_text', text: header } },
     ...(input.mention ? [{ type: 'section', text: { type:'mrkdwn', text: input.mention } }] : []),
@@ -210,12 +199,9 @@ function buildSlackBlocks(input: {
     { type: 'section', text: { type: 'mrkdwn', text: `*本文:*\n${input.message || '-'}` } },
   ]
   const actions:any[] = []
-  if (input.studioDeepLink) {
-    actions.push({ type:'button', text:{ type:'plain_text', text:'Studioで開く' }, url: input.studioDeepLink })
-  }
-  if (input.email) {
-    actions.push({ type:'button', text:{ type:'plain_text', text:'メール返信' }, url:`mailto:${input.email}` })
-  }
+  if (input.studioDeepLink) actions.push({ type:'button', text:{ type:'plain_text', text:'Studioで開く' }, url: input.studioDeepLink })
+  if (mailto) actions.push({ type:'button', text:{ type:'plain_text', text:'メール返信' }, url: mailto })
   if (actions.length) blocks.push({ type:'actions', elements: actions })
+
   return { fallbackText, blocks }
 }
