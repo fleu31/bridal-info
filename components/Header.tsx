@@ -17,6 +17,7 @@ export default function Header(){
           <Link className="no-underline hover:opacity-70" href="/directory">ディレクトリ</Link>
           <Link className="no-underline hover:opacity-70" href="/policy">編集ポリシー</Link>
           <Link className="no-underline hover:opacity-70" href="/faq">FAQ</Link>
+          <Link className="no-underline hover:opacity-70" href="/articles">記事</Link>
         </nav>
         <div className="small">情報提供サイト</div>
       </div>
