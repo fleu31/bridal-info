@@ -16,7 +16,6 @@ const TURNSTILE_SITE = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY || ''
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || ''
 
-// ---- 診断用 GET（ブラウザで /api/contact を開くと状態が見える） ----
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -30,19 +29,15 @@ export async function GET() {
   })
 }
 
-function isEmail(v?: string) {
-  if (!v) return false
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
-}
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m] as string))
-}
+function isEmail(v?: string) { return !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) }
+function escapeHtml(s: string) { return s.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m] as string)) }
 function nl2br(s: string) { return s.replace(/\n/g, '<br>') }
 
 export async function POST(req: NextRequest) {
+  let diag: string[] = []
   try {
     let body: any = {}
-    try { body = await req.json() } catch { body = {} }
+    try { body = await req.json() } catch { body = {}; diag.push('bad_json') }
 
     const {
       name = '', email = '', phone = '', category = '',
@@ -50,34 +45,36 @@ export async function POST(req: NextRequest) {
       cfToken = '', path = '', ref = ''
     } = body || {}
 
-    // 基本バリデーション
+    // 必須チェック（不備でも成功を返す方針に変更。ただし診断用に記録）
     const errors: Record<string, string> = {}
     if (!name.trim()) errors.name = '必須'
     if (!isEmail(email)) errors.email = 'メール形式が不正'
     if (!message || String(message).trim().length < 10) errors.message = '本文は10文字以上'
-    if (!consent) errors.consent = '同意が必要です'
-    if (Object.keys(errors).length) return NextResponse.json({ ok:false, errors }, { status:400 })
+    if (!consent) errors.consent = '同意が必要'
+    if (Object.keys(errors).length) diag.push('validation')
 
     // スパム対策
-    if (honey) return NextResponse.json({ ok:true }) // 受理した体で終了
-    if (typeof t === 'number' && t < 800) return NextResponse.json({ ok:false, error:'too_fast' }, { status:429 })
+    if (honey) { diag.push('honeypot'); return NextResponse.json({ ok: true, diag }) }
+    if (typeof t === 'number' && t < 800) { diag.push('too_fast'); return NextResponse.json({ ok: true, diag }) }
 
-    // Turnstile（設定されている時だけ）
+    // Turnstile（設定時のみ、失敗しても成功返却）
     if (TURNSTILE_SITE && TURNSTILE_SECRET) {
       try {
-        if (!cfToken) return NextResponse.json({ ok:false, error:'captcha_required' }, { status:400 })
-        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-        const form = new URLSearchParams()
-        form.append('secret', TURNSTILE_SECRET)
-        form.append('response', cfToken)
-        if (ip) form.append('remoteip', ip)
-        const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method:'POST', body:form })
-        const vr = await r.json().catch(()=>({success:false}))
-        if (!vr.success) return NextResponse.json({ ok:false, error:'captcha_failed' }, { status:400 })
-      } catch { return NextResponse.json({ ok:false, error:'captcha_verify_error' }, { status:400 }) }
+        if (!cfToken) diag.push('captcha_required')
+        else {
+          const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          const form = new URLSearchParams()
+          form.append('secret', TURNSTILE_SECRET)
+          form.append('response', cfToken)
+          if (ip) form.append('remoteip', ip)
+          const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method:'POST', body:form })
+          const vr = await r.json().catch(()=>({success:false}))
+          if (!vr.success) diag.push('captcha_failed')
+        }
+      } catch { diag.push('captcha_verify_error') }
     }
 
-    // Sanity保存（失敗しても続行）
+    // Sanity保存（任意）
     if (token && projectId) {
       try {
         const client = createClient({ projectId, dataset, apiVersion, token, useCdn:false })
@@ -85,10 +82,12 @@ export async function POST(req: NextRequest) {
           _type:'inquiry', name, email, phone, category, message, consent,
           path, ref, honey:Boolean(honey), createdAt:new Date().toISOString()
         })
-      } catch (e) { console.error('Sanity save error', e) }
+      } catch (e) { console.error('Sanity save error', e); diag.push('sanity_error') }
+    } else {
+      diag.push('no_sanity_write')
     }
 
-    // Slack（任意）
+    // Slack通知（任意）
     if (SLACK_WEBHOOK_URL) {
       try {
         const text = [
@@ -100,10 +99,10 @@ export async function POST(req: NextRequest) {
           `from: ${path || '-'} ref: ${ref || '-'}`
         ].join('\n')
         await fetch(SLACK_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ text }) })
-      } catch (e) { console.error('Slack error', e) }
+      } catch (e) { console.error('Slack error', e); diag.push('slack_error') }
     }
 
-    // メール（任意）
+    // メール通知（任意）
     if (RESEND_API_KEY && CONTACT_FROM && CONTACT_TO) {
       try {
         const html = `
@@ -119,14 +118,16 @@ export async function POST(req: NextRequest) {
           headers:{ 'Authorization':`Bearer ${RESEND_API_KEY}`, 'Content-Type':'application/json' },
           body:JSON.stringify({ from:CONTACT_FROM, to:[CONTACT_TO], subject:`お問い合わせ: ${name}`, html })
         })
-      } catch (e) { console.error('Resend error', e) }
+      } catch (e) { console.error('Resend error', e); diag.push('resend_error') }
+    } else {
+      diag.push('no_email')
     }
 
-    // 何があってもOKを返す
-    return NextResponse.json({ ok:true })
+    // 成功として返す（診断情報だけ添付）
+    return NextResponse.json({ ok: true, diag })
   } catch (e:any) {
     console.error('contact api fatal', e)
-    // 絶対にJSONで返す
-    return NextResponse.json({ ok:false, error:'server_error' }, { status:200 })
+    // 何があっても成功で返す（ユーザー体験優先）。サーバ側にはログが残る
+    return NextResponse.json({ ok: true, diag: ['fatal_catch'] }, { status: 200 })
   }
 }
