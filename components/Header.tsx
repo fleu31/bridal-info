@@ -1,12 +1,13 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Header(){
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
       <div className="container py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-neutral-900" />
+          <Image src="/logo.svg" alt="サイトロゴ" width={32} height={32} />
           <span className="font-medium tracking-wide no-underline">BRAND（仮）</span>
         </div>
         <nav className="hidden md:flex items-center gap-6 text-sm">
@@ -15,9 +16,9 @@ export default function Header(){
           <Link className="no-underline hover:opacity-70" href="/tools/checker">チェッカー</Link>
           <Link className="no-underline hover:opacity-70" href="/tools/checklist-72h">72時間前</Link>
           <Link className="no-underline hover:opacity-70" href="/directory">ディレクトリ</Link>
+          <Link className="no-underline hover:opacity-70" href="/articles">記事</Link>
           <Link className="no-underline hover:opacity-70" href="/policy">編集ポリシー</Link>
           <Link className="no-underline hover:opacity-70" href="/faq">FAQ</Link>
-          <Link className="no-underline hover:opacity-70" href="/articles">記事</Link>
         </nav>
         <div className="small">情報提供サイト</div>
       </div>
